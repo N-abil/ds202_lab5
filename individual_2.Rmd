@@ -1,0 +1,135 @@
+---
+title: "individual_2"
+author: "Cody Nielsen"
+date: "11/8/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load data & libraries
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+```
+
+
+```{r}
+acc <- read.csv("https://raw.githubusercontent.com/xdaiISU/ds202materials/master/hwlabs/fars2017/accident.csv", stringsAsFactors = FALSE)
+
+person <- read.csv("https://raw.githubusercontent.com/xdaiISU/ds202materials/master/hwlabs/fars2017/person.csv", stringsAsFactors = FALSE)
+```
+## Questions
+
+1. Are there some days of the week where more accidents happen than the others (see FARS manual, use variable DAY_WEEK)?  
+
+```{r}
+ggplot(acc, aes(x=factor(DAY_WEEK, label=c('Sun', 'Mon', 'Tues','Wed', 'Thurs','Fri', 'Sat')))) + geom_bar() + xlab('Day of the Week') + ylab('Number of accidents')
+```  
+
+It looks like accidents increase as the week progresses starting from Thursday and the highest number of accidents is on Saturday.  
+
+2.Create a data frame containing the persons who are fatally hurt in the accidents (look up variable INJ_SEV)  
+
+```{r}
+fatal_hurt <- person %>%filter(INJ_SEV == 4)
+
+head(fatal_hurt)
+```  
+
+3. Create a data frame containing the most dangerous vehicle make in each state. The number of persons fatally hit in the vehicle make is used to assess the (non-)safety of a make. Make sure to handle the missing values appropriately. (look up variable MAKE)  
+
+```{r}
+danger_vehicles <- fatal_hurt %>% group_by(MAKE, INJ_SEV,na.rm = TRUE) %>% arrange(MAKE, INJ_SEV)
+
+fatal_hurt %>% group_by(STATE, MAKE) %>% summarize(n = n()) %>% group_by(STATE) %>% filter(n == max(n))
+
+head(danger_vehicles)
+```  
+
+4. Create a map, and label each state with the most dangerous vehicle. Discuss the definition of the most dangerous vehicle, and what you find from the map. (Hint: Read the description for the STATE and COUNTY columns in the FARS manual. The state & county codes are Geographic Locator Codes (GLCs) from the General Services Administration’s (GSA) publication. Use readxl::read_xlsx to read in the GLCs.)  
+
+```{r}
+glcs <- read_xlsx("FRPP_GLC_-_United_StatesSep292020.xlsx")
+states = map_data('state')
+glcs$'State Code' <- as.numeric(glcs$'State Code')
+glcs$'County Code' <-as.numeric(glcs$'County Code')
+fatal_hurt$MAKE = as.factor(fatal_hurt$MAKE)
+
+
+
+# danger_map <- fatal_hurt %>% left_join(glcs %>% select(c('State Name', 'State Code')), by = c('STATE' = 'State Code')) %>% mutate('State Name' = tolower('State Name')) %>% unique() %>%
+#   left_join(counties, by = c('State Name' = 'subregion'))
+# 
+# ggplot(states, aes(x = long, y = lat)) + 
+#   geom_polygon(aes(group = group)) +
+#   geom_polygon(data = danger_map,
+#                aes(x = long, y = lat, group = group, fill = MAKE)) +
+#   coord_map()
+
+
+
+```  
+
+5. Join the accident and person table (work out which variable(s) to use)  
+
+```{r}
+acci_person <- inner_join(acc, person)
+
+head(acci_person)
+```  
+
+6. Tally the number of accidents by day of the week (DAY_WEEK), hour of the day (HOUR) and gender (SEX). Visualize the results. 
+
+```{r}
+acci_person %>% select(-c(HOUR)) %>% group_by(DAY_WEEK) %>% summarise(count = n()) %>% ggplot(aes(x=factor(DAY_WEEK, label=c('Sun', 'Mon', 'Tues','Wed', 'Thurs','Fri', 'Sat')))) + geom_bar(aes(weight=count)) + xlab("Day of Week")
+```  
+
+
+```{r}
+acci_person %>% select(-c(HOUR)) %>% left_join(acc, by="ST_CASE") %>% group_by(HOUR) %>% summarise(count = n()) %>% ggplot(aes(x=HOUR)) + geom_bar(aes(weight=count))+xlim(0,24)
+```  
+
+
+```{r}
+acci_person$SEX <- factor(acci_person$SEX)
+acci_person %>% select(-c(HOUR)) %>% left_join(acc, by="ST_CASE") %>% group_by(SEX) %>% summarise(count = n()) %>% ggplot(aes(x=factor(SEX, label=c('Male', 'Female', 'Not Reported', 'Unknown')))) + geom_bar(aes(weight=count)) + xlab('SEX')
+```  
+
+7. Now plot a choropleth map of the number of deaths on a county level.  
+
+```{r}
+counties <- map_data('county')
+
+deaths <- acc %>% group_by(COUNTY) %>% summarise(death_sum = sum(FATALS), .groups = 'drop')
+
+death_map <- deaths %>% left_join(glcs %>% select(c('County Name', 'County Code')), by = c('COUNTY' = 'County Code'))  %>% unique() %>% left_join(counties, by = c('County Name' = 'subregion'))
+
+ggplot(counties, aes(x = long, y = lat)) + geom_polygon(aes(group = group)) +
+  geom_polygon(data = death_map, aes(x = long, y = lat, group = group, fill = death_sum)) + coord_map()
+  
+```  
+
+8. Is summer or winter more dangerous? Does this depend on states? Explore and explain.  
+
+```{r}
+winter <- acc %>%  filter(MONTH %in% c(6, 7, 8)) %>% 
+  group_by(STATE) 
+
+summer <- acc %>%  filter(MONTH %in% c(12, 1, 2)) %>% 
+  group_by(STATE) 
+
+dat1 <-winter %>% summarize(total =nrow(winter))
+dat1$season = 'winter'
+dat2 <- summer %>% summarize(total =nrow(summer))
+dat2$season = 'summer'
+season <- merge(dat1,dat2,all=TRUE)
+
+ggplot(season ,aes(x= season, y =total,fill =season)) +geom_bar(stat='identity')
+```  
+
+
+Based on the chart it looks like winter is more dangerous than summer.
