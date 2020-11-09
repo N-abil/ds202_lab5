@@ -59,7 +59,7 @@ glcs$'State Code' <- as.numeric(glcs$'State Code')
 glcs$'County Code' <-as.numeric(glcs$'County Code')
 fatal_hurt$MAKE = as.factor(fatal_hurt$MAKE)
 
-
+ ggplot(states, aes(x = long, y = lat)) + geom_path(aes(group = group))
 
 # danger_map <- fatal_hurt %>% left_join(glcs %>% select(c('State Name', 'State Code')), by = c('STATE' = 'State Code')) %>% mutate('State Name' = tolower('State Name')) %>% unique() %>%
 #   left_join(counties, by = c('State Name' = 'subregion'))

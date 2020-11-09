@@ -54,22 +54,16 @@ head(danger_vehicles)
 
 ```{r}
 glcs <- read_xlsx("FRPP_GLC_-_United_StatesSep292020.xlsx")
-states = map_data('state')
+states <- map_data('state')
 glcs$'State Code' <- as.numeric(glcs$'State Code')
 glcs$'County Code' <-as.numeric(glcs$'County Code')
 fatal_hurt$MAKE = as.factor(fatal_hurt$MAKE)
 
-
+ ggplot(states, aes(x = long, y = lat)) + geom_path(aes(group = group))
 
 # danger_map <- fatal_hurt %>% left_join(glcs %>% select(c('State Name', 'State Code')), by = c('STATE' = 'State Code')) %>% mutate('State Name' = tolower('State Name')) %>% unique() %>%
 #   left_join(counties, by = c('State Name' = 'subregion'))
 # 
-# ggplot(states, aes(x = long, y = lat)) + 
-#   geom_polygon(aes(group = group)) +
-#   geom_polygon(data = danger_map,
-#                aes(x = long, y = lat, group = group, fill = MAKE)) +
-#   coord_map()
-
 
 
 ```  
