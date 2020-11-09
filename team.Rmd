@@ -52,24 +52,16 @@ head(danger_vehicles)
 
 4. Create a map, and label each state with the most dangerous vehicle. Discuss the definition of the most dangerous vehicle, and what you find from the map. (Hint: Read the description for the STATE and COUNTY columns in the FARS manual. The state & county codes are Geographic Locator Codes (GLCs) from the General Services Administration’s (GSA) publication. Use readxl::read_xlsx to read in the GLCs.)  
 
+I am unsure as to why when I call as.integer it changes it to NAs. I spent a lot of time trying to figure this out and couldn't.
 ```{r}
 glcs <- read_xlsx("FRPP_GLC_-_United_StatesSep292020.xlsx")
-states = map_data('state')
-glcs$'State Code' <- as.numeric(glcs$'State Code')
-glcs$'County Code' <-as.numeric(glcs$'County Code')
+states <- map_data('state') %>% rename('State Name'=region)
+glcs <- glcs %>% mutate('State Code'=as.integer('State Code'),'County Code'=as.integer('County Code')) %>% rename(STATE=`State Code`) %>% rename(COUNTY=`County Code`)
+glcs$`State Name`=tolower(glcs$"State Name")
+glcs$`County Name`=tolower(glcs$"County Name")
 fatal_hurt$MAKE = as.factor(fatal_hurt$MAKE)
-
- ggplot(states, aes(x = long, y = lat)) + geom_path(aes(group = group))
-
-# danger_map <- fatal_hurt %>% left_join(glcs %>% select(c('State Name', 'State Code')), by = c('STATE' = 'State Code')) %>% mutate('State Name' = tolower('State Name')) %>% unique() %>%
-#   left_join(counties, by = c('State Name' = 'subregion'))
-# 
-# ggplot(states, aes(x = long, y = lat)) + 
-#   geom_polygon(aes(group = group)) +
-#   geom_polygon(data = danger_map,
-#                aes(x = long, y = lat, group = group, fill = MAKE)) +
-#   coord_map()
-
+MapWithText <- states %>% select(long,lat,'State Name') %>% inner_join(glcs,by="State Name") %>% select(long,lat,STATE) %>% group_by(STATE) %>% mutate(long=(max(long)+min(long))/2,lat=(max(lat)+min(lat))/2) %>% slice(1) %>% inner_join(danger_vehicles, by="STATE")
+ggplot(states, aes(x = long, y = lat)) + geom_polygon(aes(group = group)) + geom_text(aes(MapWithText=MAKE),color="white",data=MapWithText) + coord_map()
 
 
 ```  
